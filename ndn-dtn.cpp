@@ -32,6 +32,24 @@
 #define STOP_TIME 10.0 // seconds
 #define FAIL_CHANCE 10 // Link failure percentage
 
+/* ==============================
+*			NOTES
+*  ==============================
+* Have:
+* 	- topo
+* 	- broadcast
+* TODO:
+* 	- tracing
+* 		- Refine Rscript
+* 		- Consider if more tracing is needed
+* 	- content store "bundle layer"
+* 	- Producers:
+* 		- if has content, then return content
+* 		- else forward interest with missing content
+*/
+
+
+
 namespace ns3 {
 /*
  *
@@ -48,7 +66,6 @@ namespace ns3 {
 // ==============================
 // 		TRACE FUNCTION START
 // ==============================
-//
 //void CwndChange (Ptr<OutputStreamWrapper> stream, uint32_t oldCwnd, uint32_t newCwnd){
 //	 *stream->GetStream () << Simulator::Now ().GetSeconds () << " " <<  newCwnd << std::endl;
 //}
@@ -117,13 +134,8 @@ int main(int argc, char* argv[]) {
 	// ==============================
 	// Install NDN stack on all nodes
 	ndn::StackHelper ndnHelper;
-
-	// Set Broadcast strategy
-	ndn::StrategyChoiceHelper::InstallAll("/", "/localhost/nfd/strategy/broadcast");
-
-	// Installing global routing interface on all nodes
-	ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
-	ndnGlobalRoutingHelper.InstallAll();
+	ndnHelper.SetDefaultRoutes(true);
+	ndnHelper.InstallAll();
 
 	// Getting containers for the consumer/producer
 	NodeContainer producerNodes;
@@ -132,11 +144,8 @@ int main(int argc, char* argv[]) {
 	producerNodes.Add(Names::Find<Node>("Src2"));
 	consumerNodes.Add(Names::Find<Node>("Dst1"));
 
-	std::string prefix = "/prefix";
-	// Add /prefix origins to ndn::GlobalRouter
-	ndnGlobalRoutingHelper.AddOrigins(prefix, producerNodes);
-	// Calculate and install FIBs
-	ndn::GlobalRoutingHelper::CalculateRoutes();
+	// Set Broadcast strategy
+	ndn::StrategyChoiceHelper::InstallAll("/", "/localhost/nfd/strategy/broadcast");
 
 	// ==============================
 	// 		NETWORK END
@@ -148,6 +157,9 @@ int main(int argc, char* argv[]) {
 	// ==============================
 	//ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
 	//consumerHelper.SetAttribute("Frequency", StringValue("100")); // 100 interests a second
+
+	// Add /prefix origins to ndn::GlobalRouter
+	std::string prefix = "/prefix";
 
 	ndn::AppHelper consumerHelper("ns3::ndn::ConsumerWindow");
 	consumerHelper.SetAttribute("Window", StringValue("1"));
@@ -161,6 +173,17 @@ int main(int argc, char* argv[]) {
 	producerHelper.SetPrefix(prefix);
 	producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
 	producerHelper.Install(producerNodes);
+
+/*
+ 	// Global routing will forward packets towards dst instead of flooding
+	// Installing global routing interface on all nodes
+	ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
+	ndnGlobalRoutingHelper.InstallAll();
+	ndnGlobalRoutingHelper.AddOrigins(prefix, producerNodes);
+	// Calculate and install FIBs
+	ndn::GlobalRoutingHelper::CalculateRoutes();
+*/
+
 	// ==============================
 	// 		APP END
 	// ==============================
@@ -172,12 +195,11 @@ int main(int argc, char* argv[]) {
 	ndn::L3RateTracer::InstallAll("src/ndnSIM/examples/dtn-trace/dtn-rate-trace.txt", Seconds(0.5));
 
 
-	//ns3::AsciiTraceHelperForDevice::
+	//AsciiTraceHelperForDevice ascii;
 	//PointToPointHelper R1R2;
 	//R1R2.EnableAsciiAll(ascii.CreateFileStream("ndn-dtn-r1r2.tr"));
 	//ascii.("/", consumerNodes);
 	//Simulator::Schedule(Seconds(0.01),&TraceCwnd);
-
 	// ==============================
 	// 		TRACE END
 	// ==============================
